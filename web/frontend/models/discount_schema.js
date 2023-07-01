@@ -11,7 +11,6 @@ const discountSchema = new mongoose.Schema({
     selectedResourceGet: { type: String, required: true },
     productVariantIDBuy: { type: String, required: true },
     productVariantIDGet: { type: String, required: true },
-    startingDate: { type: String, required: true },
     title: { type: String, required: true },
 });
 

@@ -12,9 +12,13 @@
     "deploy": "shopify app deploy"
   },
   "dependencies": {
+    "@apollo/server": "^4.7.5",
     "@shopify/app": "3.46.5",
     "@shopify/cli": "3.46.5",
     "@shopify/shopify-app-session-storage-mongodb": "^1.0.9",
+    "axios": "^1.4.0",
+    "graphql": "^16.7.1",
+    "lokijs": "^1.5.12",
     "mongoose": "^7.3.1"
   },
   "author": "vowelweb",

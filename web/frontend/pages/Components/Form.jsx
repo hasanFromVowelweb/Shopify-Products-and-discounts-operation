@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useIndexResourceState, Form, DatePicker, FormLayout, Divider, RangeSlider, TextField, Checkbox, Button, LegacyCard, Text, IndexTable, Layout, } from '@shopify/polaris';
+import { useIndexResourceState, Form, Frame, Toast, Spinner, DatePicker, FormLayout, Divider, RangeSlider, TextField, Checkbox, Button, LegacyCard, Text, IndexTable, Layout, } from '@shopify/polaris';
 import { useAuthenticatedFetch } from '../../hooks/useAuthenticatedFetch';
 
 import { Provider, ResourcePicker } from '@shopify/app-bridge-react';
@@ -7,13 +7,12 @@ import { Provider, ResourcePicker } from '@shopify/app-bridge-react';
 
 
 
-export default function FormTable() {
+export default function FormTable({ receivedData, resetEditData }) {
 
     const doSomething = useAuthenticatedFetch();
 
     const [input, setInput] = useState({
         perOrderLimit: '',
-        startingDate: '',
         title: '',
         selectedResourceBuy: '',
         selectedResourceGet: '',
@@ -23,73 +22,199 @@ export default function FormTable() {
         productPercentageGet: '',
         productQuantitybuy: ''
     });
-    const [tableData, setTableData] = useState([])
 
     ///////////////////////resource picker/////////////////
     const [openResource, setOpenResource] = useState(false);
     const [openResource2, setOpenResource2] = useState(false);
-
+    const [toastActive, setToastActive] = useState(false);
 
     const [selectedResourceBuy, setSelectedResourceBuy] = useState(null);
     const [selectedResourceGet, setSelectedResourceGet] = useState(null);
+    const [submitState, setSubmitState] = useState(false)
+
+    const [spinnerState, setSpinnerState] = useState(false)
 
 
 
-    const [startDate, setStartDate] = useState(null);
-    const [endDate, setEndDate] = useState(null);
 
-    const handleStartDateChange = (newStartDate) => {
-        setStartDate(newStartDate);
-    };
-
-    const handleEndDateChange = (newEndDate) => {
-        setEndDate(newEndDate);
-    };
+    ////////////////////////////////
 
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await doSomething('https://my-store-development-14.myshopify.com/cart.json');
-                const data = await response.json();
-                console.log('fetched cart data: ', data);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
-        fetchData();
-        
-    }, [])
+        console.log('receivedData.........', receivedData)
+        console.log(typeof (receivedData))
+        if (receivedData.perOrderLimit) {
+            setInput({
+                perOrderLimit: receivedData.perOrderLimit,
+                title: receivedData.title,
+                selectedResourceBuy: '',
+                selectedResourceGet: '',
+                productVariantIDBuy: receivedData.productVariantIDBuy,
+                productVariantIDGet: receivedData.productVariantIDGet,
+                productQuantityGet: receivedData.productQuantityGet,
+                productPercentageGet: receivedData.productPercentageGet,
+                productQuantitybuy: receivedData.productQuantitybuy,
+            })
+            setSubmitState(true)
+            resetEditData('')
+        }
+    }, [receivedData])
+
+
+    ///////////////////////////////
+
+
+
+    const handleReset = useCallback(() => {
+        setInput({
+            perOrderLimit: '',
+            title: '',
+            selectedResourceBuy: '',
+            selectedResourceGet: '',
+            productVariantIDBuy: '',
+            productVariantIDGet: '',
+            productQuantityGet: '',
+            productPercentageGet: '',
+            productQuantitybuy: ''
+        })
+        setSubmitState(false)
+        setSpinnerState(false)
+    }, []);
 
 
     const handleSubmit = useCallback(async () => {
-        console.log('data to post.......', input)
 
-        try {
-            const response = await doSomething('/api/discountcreate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(input)
-            });
-
-            const data = await response.json();
-            console.log('data from frontend', data)
-
-            if (response.ok) {
-                console.log('Data sent successfully');
-            } else {
-                console.error('Failed to send data :', data.error);
-            }
-        } catch (error) {
-            console.error('Error sending data:', error);
+        if (input.perOrderLimit.length < 1) {
+            alert("Per Order Limit shouldn't be empty!")
         }
+        else if (input.title.length < 1) {
+            alert("Title shouldn't be empty!")
+        }
+        else if (input.selectedResourceBuy.length < 1) {
+            alert("Product shouldn't be empty!")
+        }
+        else if (input.selectedResourceGet.length < 1) {
+            alert("Product shouldn't be empty!")
+        }
+        else if (input.productQuantityGet.length < 1) {
+            alert("Product Quantity shouldn't be empty!")
+        }
+        else if (input.productPercentageGet.length < 1) {
+            alert("Product Percentage shouldn't be empty!")
+        }
+        else if (input.productQuantitybuy.length < 1) {
+            alert("Product Quantity shouldn't be empty!")
+        } else {
 
-        console.log('fetch', fetch)
+            console.log('data to submit.......', input)
+
+            try {
+                setSpinnerState(true)
+                const response = await doSomething('/api/discountcreate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(input)
+                });
+
+                const data = await response.json();
+                console.log('data from frontend created', data)
+
+                if (response.ok) {
+                    console.log('Data sent successfully');
+                    setSpinnerState(false)
+                    setToastActive((active) => !active)
+                } else {
+                    console.error('Failed to send data :', data.error);
+                }
+            } catch (error) {
+                console.error('Error sending data:', error);
+            }
+
+            setInput({
+                perOrderLimit: '',
+                title: '',
+                selectedResourceBuy: '',
+                selectedResourceGet: '',
+                productVariantIDBuy: '',
+                productVariantIDGet: '',
+                productQuantityGet: '',
+                productPercentageGet: '',
+                productQuantitybuy: ''
+            })
+        }
 
     }, [input]);
 
+
+    const handleSubmitUpdate = useCallback(async () => {
+
+        if (input.perOrderLimit.length < 1) {
+            alert("Per Order Limit shouldn't be empty!")
+        }
+        else if (input.title.length < 1) {
+            alert("Title shouldn't be empty!")
+        }
+        else if (input.selectedResourceBuy.length < 1) {
+            alert("Product shouldn't be empty!")
+        }
+        else if (input.selectedResourceGet.length < 1) {
+            alert("Product shouldn't be empty!")
+        }
+        else if (input.productQuantityGet.length < 1) {
+            alert("Product Quantity shouldn't be empty!")
+        }
+        else if (input.productPercentageGet.length < 1) {
+            alert("Product Percentage shouldn't be empty!")
+        }
+        else if (input.productQuantitybuy.length < 1) {
+            alert("Product Quantity shouldn't be empty!")
+        } else {
+            console.log('data to update.......', input)
+            setSpinnerState(true)
+            try {
+                const response = await doSomething('/api/discountupdate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(input)
+                });
+
+                const data = await response.json();
+                console.log('data from frontend updated', data)
+
+                if (response.ok) {
+                    console.log('Data sent for update successfully');
+                    setToastActive((active) => !active)
+                    setSpinnerState(false)
+                } else {
+                    console.error('Failed to send data for update :', data.error);
+                }
+            } catch (error) {
+                console.error('Error sending data:', error);
+            }
+
+            setSubmitState(false)
+            setInput({
+                perOrderLimit: '',
+                title: '',
+                selectedResourceBuy: '',
+                selectedResourceGet: '',
+                productVariantIDBuy: '',
+                productVariantIDGet: '',
+                productQuantityGet: '',
+                productPercentageGet: '',
+                productQuantitybuy: ''
+            })
+
+        }
+
+
+
+
+    }, [input]);
 
 
     ///////////////////////////////resourcePicker/////////////////////////////
@@ -106,20 +231,16 @@ export default function FormTable() {
         setInput((prevState) => ({
             ...prevState,
             selectedResourceBuy: resources.selection[0].id,
-            productVariantIDBuy :resources.selection[0].variants[0].id
+            productVariantIDBuy: resources.selection[0].variants[0].id
         }));
     };
-
-    
-
-
 
     const handleCancelPicker = () => {
         setOpenResource(false);
 
     };
 
-    ///////
+    ///////////
 
     const handleSelectPicker2 = (resources) => {
         setOpenResource2(false);
@@ -127,7 +248,7 @@ export default function FormTable() {
         setInput((prevState) => ({
             ...prevState,
             selectedResourceGet: resources.selection[0].id,
-            productVariantIDGet :resources.selection[0].variants[0].id
+            productVariantIDGet: resources.selection[0].variants[0].id
         }));
     };
 
@@ -138,6 +259,16 @@ export default function FormTable() {
 
 
     /////////////////////////////////////////////////////////////////////////
+
+    //////////////////////Toast//////////////////////////////////////////////
+
+    const dismissToast = useCallback(() => setToastActive((active) => !active), []);
+
+    const toastMarkup = toastActive ? (
+        <Toast content="Successfully submitted!" onDismiss={dismissToast} />
+    ) : null;
+
+    ////////////////////////////////////////////////////////////////////////
 
 
 
@@ -152,126 +283,130 @@ export default function FormTable() {
 
     return (
         <Layout>
-            <LegacyCard sectioned>
-                <Form onSubmit={handleSubmit}>
-                    <FormLayout>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                            <div style={{ flexBasis: '100%', marginBottom: '16px' }}>
-                                <h1>Common Fields:-</h1>
-                            </div>
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    value={input.perOrderLimit}
-                                    onChange={(value) => handleInputChange(value, 'perOrderLimit')}
-                                    label="Per Order Limit:"
-                                    type="number"
-                                />
-                            </div>
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    value={input.startingDate}
-                                    onChange={(value) => handleInputChange(value, 'startingDate')}
-                                    label="Starting Date:"
-                                    type="text"
-                                    helpText="Format: year-month-date"
-                                />
-                            </div>
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    value={input.title}
-                                    onChange={(value) => handleInputChange(value, 'title')}
-                                    label="Title"
-                                    type="text"
-                                />
-                            </div>
-                            <div style={{ flexBasis: '100%', marginBottom: '16px' }}>
-                                <h1>Customer Gets:-</h1>
-                            </div>
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    label="Product:"
-                                    value={input.selectedResourceGet ? selectedResourceGet.title : ''}
-                                    readOnly
-                                />
-                                <Button onClick={() => setOpenResource2(true)}>Select Product</Button>
-                                {openResource2 && (
-                                    <Provider config={config}>
-                                        <ResourcePicker
-                                            resourceType="Product"
-                                            selectMultiple={false}
-                                            open={openResource2}
-                                            onSelection={handleSelectPicker2}
-                                            onCancel={handleCancelPicker2}
-                                        />
-                                    </Provider>
+            <Frame>
+                <LegacyCard sectioned>
 
-                                )}
-                            </div>
+                    <Form onSubmit={submitState ? handleSubmitUpdate : handleSubmit}>
+                        <FormLayout>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                                <div style={{ flexBasis: '100%', marginBottom: '16px' }}>
+                                    <code>Common Fields:-</code>
+                                </div>
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        value={input.perOrderLimit}
+                                        onChange={(value) => handleInputChange(value, 'perOrderLimit')}
+                                        label="Per Order Limit:"
+                                        type="number"
 
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    value={input.productQuantityGet}
-                                    onChange={(value) => handleInputChange(value, 'productQuantityGet')}
-                                    label="Product Quantity:"
-                                    type="number"
-                                />
-                            </div>
+                                    />
 
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    value={input.productPercentageGet}
-                                    onChange={(value) => handleInputChange(value, 'productPercentageGet')}
-                                    label="Product Percentage:"
-                                    type="number"
+                                </div>
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        value={input.title}
+                                        onChange={(value) => handleInputChange(value, 'title')}
+                                        label="Title"
+                                        type="text"
+                                    />
+                                </div>
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
 
-                                />
-                            </div>
-                            <div style={{ flexBasis: '100%', marginBottom: '16px' }}>
-                                <h1>Customer Buy:-</h1>
-                            </div>
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    label="Product:"
-                                    value={input.selectedResourceBuy ? selectedResourceBuy.title : ''}
-                                    readOnly
-                                />
-                                <Button onClick={() => setOpenResource(true)}>Select Product</Button>
-                                {openResource && (
-                                    <Provider config={config}>
-                                        <ResourcePicker
-                                            resourceType="Product"
-                                            selectMultiple={false}
-                                            open={openResource}
-                                            onSelection={handleSelectPicker}
-                                            onCancel={handleCancelPicker}
-                                        />
-                                    </Provider>
+                                </div>
+                                <div style={{ flexBasis: '100%', marginBottom: '16px' }}>
+                                    <code>Customer Gets:-</code>
+                                </div>
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        label="Product:"
+                                        value={input.selectedResourceGet ? selectedResourceGet.title : ''}
+                                        readOnly
+                                    />
 
-                                )}
-                            </div>
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-                                <TextField
-                                    value={input.productQuantitybuy}
-                                    onChange={(value) => handleInputChange(value, 'productQuantitybuy')}
-                                    label="Product Quantity:"
-                                    type="number"
-                                />
-                            </div>
+                                    {toastMarkup}
 
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+
+                                    <Button onClick={() => setOpenResource2(true)}>Select Product </Button>
+                                    {openResource2 && (
+                                        <Provider config={config}>
+                                            <ResourcePicker
+                                                resourceType="Product"
+                                                selectMultiple={false}
+                                                open={openResource2}
+                                                onSelection={handleSelectPicker2}
+                                                onCancel={handleCancelPicker2}
+                                            />
+                                        </Provider>
+
+                                    )}
+                                </div>
+
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        value={input.productQuantityGet}
+                                        onChange={(value) => handleInputChange(value, 'productQuantityGet')}
+                                        label="Product Quantity:"
+                                        type="number"
+                                    />
+                                </div>
+
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        value={input.productPercentageGet}
+                                        onChange={(value) => handleInputChange(value, 'productPercentageGet')}
+                                        label="Product Percentage:"
+                                        type="number"
+
+                                    />
+                                </div>
+                                <div style={{ flexBasis: '100%', marginBottom: '16px' }}>
+                                    <code>Customer Buy:-</code>
+                                </div>
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        label="Product:"
+                                        value={input.selectedResourceBuy ? selectedResourceBuy.title : ''}
+                                        readOnly
+                                    />
+                                    <Button onClick={() => setOpenResource(true)}>Select Product</Button>
+                                    {openResource && (
+                                        <Provider config={config}>
+                                            <ResourcePicker
+                                                resourceType="Product"
+                                                selectMultiple={false}
+                                                open={openResource}
+                                                onSelection={handleSelectPicker}
+                                                onCancel={handleCancelPicker}
+                                            />
+                                        </Provider>
+                                    )}
+                                </div>
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                    <TextField
+                                        value={input.productQuantitybuy}
+                                        onChange={(value) => handleInputChange(value, 'productQuantitybuy')}
+                                        label="Product Quantity:"
+                                        type="number"
+                                    />
+                                </div>
+
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+                                </div>
+
+                                <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
+
+                                </div>
+
                             </div>
-
-                            <div style={{ flexBasis: '30%', marginBottom: '16px' }}>
-
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <Button destructive onClick={handleReset}>Reset </Button>
+                                <Button submit>Submit {spinnerState ? <Spinner accessibilityLabel="Spinner example" size="small" /> : null}</Button>
                             </div>
+                        </FormLayout>
+                    </Form>
 
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button submit>Submit</Button>
-                        </div>
-                    </FormLayout>
-                </Form>
-            </LegacyCard>
+                </LegacyCard>
+            </Frame>
 
             <Divider />
         </Layout>

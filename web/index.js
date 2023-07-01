@@ -3,12 +3,14 @@ import { join } from "path";
 import { readFileSync } from "fs";
 import express from "express";
 import serveStatic from "serve-static";
-
 import shopify from "./shopify.js";
 import productCreator from "./product-creator.js";
 import GDPRWebhookHandlers from "./gdpr.js";
 import connect_mongo from "./frontend/models/mongo_connection.js";
 import discountSchema from "./frontend/models/discount_schema.js";
+import productSchema from "./frontend/models/product_schema.js";
+
+
 
 const PORT = parseInt(
   process.env.BACKEND_PORT || process.env.PORT || "3000",
@@ -33,26 +35,56 @@ app.post('/api/cart', (req, res) => {
 
       const newData = req.body
 
-      console.log('newData', newData)
+      // console.log('newData', newData)
       const item = newData.items
-      console.log('item..............', item)
+      // console.log('item..............', item)
+
 
       const matchedData = item.map(async (data) => {
-        const Product_ID = `gid://shopify/Product/${data.product_id}`
-        console.log('Product_ID............', Product_ID)
 
-        const mathchedField = await discountSchema.find({ selectedResourceBuy: Product_ID })
+        console.log('data.total_discount...............', data.total_discount)
 
-        if (mathchedField.length > 0) {
-          console.log('mathchedField................', mathchedField)
+        if (data.total_discount == 0) {
 
-          res.status(200).json(mathchedField)
+          const variant_ID = `gid://shopify/ProductVariant/${data.variant_id}`
+          // console.log('variant_ID............', variant_ID)
+          const mathchedField = await discountSchema.find({ productVariantIDBuy: variant_ID })
+          // console.log('mathchedField', mathchedField)
+          // res.status(200).send(mathchedField)
+          if (mathchedField.length > 0) {
+            // console.log('mathchedField > 0', mathchedField)
+
+            const data = mathchedField;
+            // console.log('data..........', data)
+
+            let maxPercentage = 0;
+            let objectWithMaxPercentage = null;
+
+            for (const obj of data) {
+              if (obj.productPercentageGet > maxPercentage) {
+                maxPercentage = obj.productPercentageGet;
+                objectWithMaxPercentage = obj;
+              }
+            }
+
+            if (objectWithMaxPercentage) {
+              console.log('Object with the highest percentage:', objectWithMaxPercentage);
+            } else {
+              console.log('No object found with a percentage greater than 0');
+            }
+            res.status(200).send(objectWithMaxPercentage)
+
+          }
+
+        } else {
+          return null
         }
-      })
 
+      })
     } catch (error) {
       console.log('error saving', error)
     }
+
   })
 
 })
@@ -223,6 +255,22 @@ app.use(express.json());
 // })
 
 
+app.get('/api/discountTableData', async (req, res) => {
+  try {
+
+    const discountData = await discountSchema.find()
+
+    console.log("discountData....", discountData)
+
+    res.status(200).send(discountData)
+  }
+  catch (error) {
+    console.log(error)
+  }
+})
+
+
+
 app.post('/api/discountcreate', async (req, res) => {
   try {
     const newData = req.body;
@@ -294,7 +342,7 @@ app.post('/api/discountcreate', async (req, res) => {
         "variables": {
           "automaticBxgyDiscount": {
             "usesPerOrderLimit": newData.perOrderLimit,
-            "startsAt": `${newData.startingDate}T19:25:50.814Z`,
+            "startsAt": new Date(),
             "title": newData.title,
             "customerGets": {
               "value": {
@@ -344,12 +392,10 @@ app.post('/api/discountcreate', async (req, res) => {
       selectedResourceGet: newData.selectedResourceGet,
       productVariantIDBuy: newData.productVariantIDBuy,
       productVariantIDGet: newData.productVariantIDGet,
-      startingDate: newData.startingDate,
       title: newData.title
     });
 
     await datadb.save()
-
 
     console.log('askjdfhasdflk');
 
@@ -358,6 +404,287 @@ app.post('/api/discountcreate', async (req, res) => {
     console.log('error saving', error);
   }
 });
+
+
+app.post('/api/discountupdate', async (req, res) => {
+  try {
+    const updateData = req.body;
+    console.log('updateData......', updateData)
+    // console.log('updateData....', updateData.title);
+    const DiscountTitle = await discountSchema.findOne({ title: updateData.title })
+    console.log('DiscountTitleeeeeeeeeeeeeeeee', DiscountTitle)
+
+    const discountid = DiscountTitle.discountID
+    const id = discountid.slice(36)
+
+    console.log('id split......', id)
+
+    console.log('discountid', typeof (discountid))
+    console.log(' updateData.productVariantIDBuy', typeof (updateData.productVariantIDBuy))
+    console.log('updateData.productQuantitybuy', typeof (String(updateData.productQuantitybuy)))
+    console.log('updateData.selectedResourceGet', typeof (updateData.selectedResourceGet))
+    console.log('updateData.productPercentageGet', typeof (updateData.productPercentageGet))
+    console.log('id in used', `gid://shopify/DiscountAutomaticBxgy/${id}`)
+
+
+
+    console.log('discountid', discountid)
+    console.log(' updateData.productVariantIDBuy', updateData.productVariantIDBuy)
+    console.log('updateData.productQuantitybuy', updateData.productQuantitybuy)
+    console.log('updateData.selectedResourceGet', updateData.selectedResourceGet)
+    console.log('updateData.productPercentageGet', updateData.productPercentageGet)
+    const percentage = updateData.productPercentageGet / 100
+
+    console.log('percentage', percentage)
+
+    const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
+
+    const data = await client.query({
+      data: {
+        "query": `mutation discountAutomaticBxgyUpdate($automaticBxgyDiscount: DiscountAutomaticBxgyInput!, $id: ID!) {
+      discountAutomaticBxgyUpdate(automaticBxgyDiscount: $automaticBxgyDiscount, id: $id) {
+        automaticDiscountNode {
+          id
+          automaticDiscount {
+            ... on DiscountAutomaticBxgy {
+              customerGets {
+                items {
+                  ... on DiscountProducts {
+                    products(first: 2) {
+                      nodes {
+                        id
+                      }
+                    }
+                  }
+                }
+                value {
+                  ... on DiscountOnQuantity {
+                    quantity {
+                      quantity
+                    }
+                  }
+                }
+              }
+              customerBuys {
+                items {
+                  ... on DiscountProducts {
+                    products(first: 2) {
+                      nodes {
+                        id
+                      }
+                    }
+                  }
+                }
+                value {
+                  ... on DiscountQuantity {
+                    quantity
+                  }
+                }
+              }
+            }
+          }
+        }
+        userErrors {
+          field
+          code
+          message
+        }
+      }
+    }`,
+        "variables": {
+          "automaticBxgyDiscount": {
+            "customerGets": {
+              "value": {
+                "discountOnQuantity": {
+                  "quantity": String(updateData.productQuantityGet),
+                  "effect": {
+                    "percentage": Number(percentage)
+                  }
+                }
+              },
+              "items": {
+                "products": {
+                  "productsToRemove": [
+                    DiscountTitle.selectedResourceGet
+                  ],
+                  "productsToAdd": [
+                    updateData.selectedResourceGet
+                  ]
+                }
+              }
+            },
+            "customerBuys": {
+              "value": {
+                "quantity": String(updateData.productQuantitybuy)
+              },
+              "items": {
+                "products": {
+                  "productsToRemove": [
+                    DiscountTitle.selectedResourceBuy
+                  ],
+                  "productsToAdd": [
+                    updateData.selectedResourceBuy
+                  ]
+                }
+              }
+            }
+          },
+          "id": discountid
+        },
+      },
+    });
+
+    const updatedDiscount = await discountSchema.findOneAndUpdate(
+      { _id: DiscountTitle._id },
+      updateData,
+      { new: true }
+    );
+
+
+    res.status(200).send(data);
+    console.log('data....', data)
+
+  } catch (error) {
+    console.log('error saving', error);
+  }
+});
+
+
+
+app.post('/api/discountdelete', async (req, res) => {
+  try {
+    const deleteData = req.body;
+    console.log('discount data for delete....', deleteData);
+    const DiscountTitle = await discountSchema.findOne({ title: deleteData.title })
+
+    const discountid = DiscountTitle.discountID
+    console.log('discountid for delete: ', discountid)
+
+
+    const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
+    const data = await client.query({
+      data: {
+        "query": `mutation discountAutomaticDelete($id: ID!) {
+      discountAutomaticDelete(id: $id) {
+        deletedAutomaticDiscountId
+        userErrors {
+          field
+          code
+          message
+        }
+      }
+    }`,
+        "variables": {
+          "id": discountid
+        },
+      },
+    });
+
+    const deleteDiscount = await discountSchema.findOneAndDelete(
+      { _id: DiscountTitle._id },
+      { new: true }
+    );
+
+    console.log(data);
+
+    res.status(200).send(data);
+  } catch (error) {
+    console.log('error saving', error);
+  }
+});
+
+
+app.get('/api/productData/:id', async (req, res) => {
+  try {
+
+    const ID = req.params.id
+    console.log('ID', ID)
+
+    // Session is built by the OAuth process
+
+    const data = await shopify.api.rest.Product.all({
+      session: res.locals.shopify.session
+    });
+
+    // console.log('data..........///', data.data)
+    ////////////////////////////////////////
+
+
+  ///////////////////////////////////////
+    // const dataExtract = data.data
+
+    // data && dataExtract?.forEach(async(data)=>{
+
+    //   const addProduct = new productSchema({
+    //     src: data?.image?.src,
+    //     title: data?.title,
+    //     handle: data?.handle,
+    //     status: data?.status,
+    //     price: data?.variants[0]?.price,
+    // });
+
+    // await addProduct.save()
+
+    // })
+
+    res.status(200).send(data);
+  } catch (error) {
+    console.log('error saving', error);
+  }
+});
+
+
+// app.get('/api/productData/:id', async (req, res) => {
+//   try {
+//     const ID = req.params.id;
+//     console.log('ID', ID);
+
+//     // Session is built by the OAuth process
+
+//     const query = `
+//       query GetProducts($first: Int, $after: String, $before: String) {
+//         products(first: $first, after: $after, before: $before) {
+//           pageInfo {
+//             hasNextPage
+//             hasPreviousPage
+//             startCursor
+//             endCursor
+//           }
+//           edges {
+//             cursor
+//             node {
+//               id
+//               title
+//             }
+//           }
+//         }
+//       }
+//     `;
+
+//     const first = 3; // Number of items to retrieve
+//     let after = null;
+//     let before = null;
+
+//     if (ID === 'next') {
+//       const { endCursor } = req.query;
+//       after = endCursor;
+//     } else if (ID === 'prev') {
+//       const { startCursor } = req.query;
+//       before = startCursor;
+//     }
+
+//     const variables = { first, after, before };
+
+//     const response = await request('<YOUR_GRAPHQL_API_ENDPOINT>', query, variables);
+
+//     res.status(200).json(response);
+//   } catch (error) {
+//     console.log('Error retrieving product data:', error);
+//     res.status(500).json({ error: 'Failed to retrieve product data' });
+//   }
+// });
+
+
 
 
 app.get("/api/products/count", async (_req, res) => {
