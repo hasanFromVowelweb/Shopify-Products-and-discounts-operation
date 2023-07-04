@@ -111,6 +111,7 @@ app.use("/api/*", shopify.validateAuthenticatedSession());
 
 app.use(express.json());
 
+
 // app.post('/api/discountcreate', async (req, res) => {
 
 
@@ -550,7 +551,6 @@ app.post('/api/discountupdate', async (req, res) => {
 });
 
 
-
 app.post('/api/discountdelete', async (req, res) => {
   try {
     const deleteData = req.body;
@@ -594,97 +594,242 @@ app.post('/api/discountdelete', async (req, res) => {
 });
 
 
-app.get('/api/productData/:id', async (req, res) => {
+//////////////////////////////////////////////////////////////////////////////////////
+
+
+app.get('/api/productData', async (req, res) => {
+
+  const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
   try {
-
-    const ID = req.params.id
-    console.log('ID', ID)
-
-    // Session is built by the OAuth process
-
-    const data = await shopify.api.rest.Product.all({
-      session: res.locals.shopify.session
+    const data = await client.query({
+      data: {
+        query: `
+          query  {
+            products(first: 5, reverse: true) {
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  title
+                  handle
+                  createdAt
+                  priceRange {
+                    maxVariantPrice {
+                      amount
+                      currencyCode
+                    }
+                    minVariantPrice {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  images(first: 1) {
+                    edges {
+                      node {
+                        originalSrc
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `
+      },
     });
-
-    // console.log('data..........///', data.data)
-    ////////////////////////////////////////
-
-
-  ///////////////////////////////////////
-    // const dataExtract = data.data
-
-    // data && dataExtract?.forEach(async(data)=>{
-
-    //   const addProduct = new productSchema({
-    //     src: data?.image?.src,
-    //     title: data?.title,
-    //     handle: data?.handle,
-    //     status: data?.status,
-    //     price: data?.variants[0]?.price,
-    // });
-
-    // await addProduct.save()
-
-    // })
-
-    res.status(200).send(data);
+    // console.log('product....', data);
+    res.status(200).json(data?.body.data);
   } catch (error) {
-    console.log('error saving', error);
+    console.log('error', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
 
-// app.get('/api/productData/:id', async (req, res) => {
-//   try {
-//     const ID = req.params.id;
-//     console.log('ID', ID);
+app.get('/api/productDataNext/:cursorData', async (req, res) => {
 
-//     // Session is built by the OAuth process
+  const cursorData = String(req.params.cursorData)
+  console.log('cursorData.......for next: ', cursorData)
 
-//     const query = `
-//       query GetProducts($first: Int, $after: String, $before: String) {
-//         products(first: $first, after: $after, before: $before) {
-//           pageInfo {
-//             hasNextPage
-//             hasPreviousPage
-//             startCursor
-//             endCursor
-//           }
-//           edges {
-//             cursor
-//             node {
-//               id
-//               title
-//             }
-//           }
-//         }
-//       }
-//     `;
+  const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
+  try {
+    const data = await client.query({
+      data: {
+        query: `
+          query ($cursor: String) {
+            products(first: 5, after: $cursor, reverse: true) {
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  title
+                  handle
+                  createdAt
+                  priceRange {
+                    maxVariantPrice {
+                      amount
+                      currencyCode
+                    }
+                    minVariantPrice {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  images(first: 1) {
+                    edges {
+                      node {
+                        originalSrc
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          cursor: cursorData
+        },
+      },
+    });
+    // console.log('product....', data);
+    res.status(200).json(data?.body.data);
+  } catch (error) {
+    console.log('error', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
-//     const first = 3; // Number of items to retrieve
-//     let after = null;
-//     let before = null;
 
-//     if (ID === 'next') {
-//       const { endCursor } = req.query;
-//       after = endCursor;
-//     } else if (ID === 'prev') {
-//       const { startCursor } = req.query;
-//       before = startCursor;
-//     }
+app.get('/api/productDataPrev/:cursorData', async (req, res) => {
 
-//     const variables = { first, after, before };
+  const cursorData = String(req.params.cursorData)
+  console.log('cursorData.......for next: ', cursorData)
 
-//     const response = await request('<YOUR_GRAPHQL_API_ENDPOINT>', query, variables);
+  const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
+  try {
+    const data = await client.query({
+      data: {
+        query: `
+          query ($cursor: String) {
+            products(last: 5, before: $cursor, reverse: true) {
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  title
+                  handle
+                  createdAt
+                  priceRange {
+                    maxVariantPrice {
+                      amount
+                      currencyCode
+                    }
+                    minVariantPrice {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  images(first: 1) {
+                    edges {
+                      node {
+                        originalSrc
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          cursor: cursorData
+        },
+      },
+    });
+    // console.log('product....', data);
+    res.status(200).json(data?.body.data);
+  } catch (error) {
+    console.log('error', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
-//     res.status(200).json(response);
-//   } catch (error) {
-//     console.log('Error retrieving product data:', error);
-//     res.status(500).json({ error: 'Failed to retrieve product data' });
-//   }
-// });
 
 
+app.post('/api/productPriceUpdate', async (req, res) => {
+  try {
+    const productPriceData = req.body;
+    console.log('productPriceData...........................:.......', productPriceData);
+
+    const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
+
+    const data = await client.query({
+      data: `mutation {
+    productUpdate(input: {id: "${productPriceData.data.productID}", variants:{price: "${productPriceData.data.price}"}}) {
+      product {
+        id
+      }
+    }
+  }`,
+    });
+
+    console.log('data from update..............................:.....', data);
+
+    res.status(200).json(data);
+
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+
+
+
+
+app.post('/api/productDelete', async (req, res) => {
+
+  try {
+    const productDeleteData = req.body
+    console.log('productDeleteData....', productDeleteData)
+    console.log('id........', productDeleteData.node.id)
+
+    const client = new shopify.api.clients.Graphql({ session: res.locals.shopify.session });
+
+    const data = await client.query({
+      data: `mutation {
+      productDelete(input: {id: "${productDeleteData.node.id}" }) {
+      deletedProductId
+      }
+    }`,
+    });
+
+    console.log('data of delete...', data)
+    res.status(200).json(data)
+  }
+  catch (error) {
+    console.log('error while deleting', error)
+  }
+
+})
 
 
 app.get("/api/products/count", async (_req, res) => {

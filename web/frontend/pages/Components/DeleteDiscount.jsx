@@ -7,14 +7,14 @@ export default function DeleteDiscount(props) {
     const doSomething = useAuthenticatedFetch()
 
     async function handleDelete() {
-        console.log('data from modal for delete: ', props.deleteData)
+        console.log('data from modal for delete: ', props.deleteData ? props.deleteData : props.ProductDeleteData)
         try {
-            const response = await doSomething('/api/discountdelete', {
+            const response = await doSomething(props.deleteData ? '/api/discountdelete' : '/api/productDelete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(props.deleteData)
+                body: JSON.stringify(props.deleteData ? props.deleteData : props.ProductDeleteData)
             });
 
             const data = await response.json();
