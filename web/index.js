@@ -28,6 +28,7 @@ const app = express();
 connect_mongo();
 
 
+
 app.post('/api/cart', (req, res) => {
 
   express.json()(req, res, async () => {
@@ -89,6 +90,14 @@ app.post('/api/cart', (req, res) => {
 
 })
 
+
+app.get('/api/extesionDiscountData', async(req, res)=>{
+    const data = await discountSchema.find()
+    const lastData = data[data.length -1]
+    console.log('data', data)
+    console.log('lastData........................', lastData)
+    res.status(200).send(lastData)
+})
 
 
 // Set up Shopify authentication and webhook handling
@@ -713,6 +722,7 @@ app.get('/api/productDataNext/:cursorData', async (req, res) => {
 });
 
 
+
 app.get('/api/productDataPrev/:cursorData', async (req, res) => {
 
   const cursorData = String(req.params.cursorData)
@@ -802,9 +812,6 @@ app.post('/api/productPriceUpdate', async (req, res) => {
 });
 
 
-
-
-
 app.post('/api/productDelete', async (req, res) => {
 
   try {
@@ -830,6 +837,7 @@ app.post('/api/productDelete', async (req, res) => {
   }
 
 })
+
 
 
 app.get("/api/products/count", async (_req, res) => {

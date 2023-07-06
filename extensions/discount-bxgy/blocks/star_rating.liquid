@@ -1,9 +1,50 @@
+<div id="toPopup">
+  <center style="font-weight:bold;font-size:22px;">HELLO, GOOD TO SEE YOU!</center>
+  <h2>Product discount details:</h2>
+  <h4 id="discountID"></h4>
+  <h4 id="summary"></h4>
+  <h4 id="perOrderLimit"></h4>
+  <h4 id="productPercentageGet"></h4>
+  <h4 id="productQuantityGet"></h4>
+  <h4 id="productQuantitybuy"></h4>
+  <h4 id="selectedResourceBuy"></h4>
+  <h4 id="selectedResourceGet"></h4>
+  <h4 id="title"></h4>
+  <a href="#" id="close">CLOSE</a>
+</div>
+
+<style>
+  #toPopup {
+    background: none repeat scroll 0 0 #e6e0e0;
+    border-top: 30px solid #ccc;
+    border-radius: 3px 3px 3px 3px;
+    color: #333333;
+    display: none;
+    font-size: 14px;
+    left: 30%;
+    position: fixed;
+    top: 10%;
+    width: 440px;
+    z-index: 2;
+    padding: 20px;
+  }
+  a {
+    padding: 5px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+  a:hover {
+    background: #dee5eb;
+    color: gray;
+  }
+</style>
+
 {% schema %}
   {
     "name": "Add_Discount_Code",
     "target": "body",
     "enabled_on": {
-      "templates": ["cart"]
+      "templates": ["cart", "index"]
     },
     "javascript": "script.js",
     "settings": []

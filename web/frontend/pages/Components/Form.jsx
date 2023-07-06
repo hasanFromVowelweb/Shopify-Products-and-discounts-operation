@@ -212,8 +212,6 @@ export default function FormTable({ receivedData, resetEditData }) {
         }
 
 
-
-
     }, [input]);
 
 
